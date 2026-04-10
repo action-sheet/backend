@@ -1,0 +1,154 @@
+spring:
+  application:
+    name: action-sheet-system
+
+  # Default profile: H2 file-based — data persists at Z:\Action Sheet System\data
+  datasource:
+    url: jdbc:h2:file:Z:/Action Sheet System/data/actionsheet_db;DB_CLOSE_DELAY=-1;MODE=PostgreSQL;AUTO_SERVER=TRUE
+    username: sa
+    password:
+    driver-class-name: org.h2.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+    open-in-view: false
+
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+
+  # Email — Gmail SMTP (same as legacy system, trusted by acg.com.kw mail server)
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: ${EMAIL_USERNAME:gemis6292@gmail.com}
+    password: ${EMAIL_PASSWORD:utqk kwym ikem ebbc}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
+          connectiontimeout: 15000
+          timeout: 15000
+          writetimeout: 15000
+          ssl:
+            trust: smtp.gmail.com
+
+  servlet:
+    multipart:
+      max-file-size: 50MB
+      max-request-size: 50MB
+
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+    default-property-inclusion: non_null
+
+server:
+  port: 8080
+  servlet:
+    context-path: /
+  compression:
+    enabled: true
+    mime-types: application/json,text/html,text/css,application/javascript
+
+# Application config
+app:
+  base-url: ${APP_BASE_URL:http://localhost:8080}
+  data-path: "Z:/Action Sheet System/data"
+  files-path: "Z:/Action Sheet System/data/files"
+  repository-path: "Z:/Action Sheet System/data/repository"
+  email:
+    from: ${EMAIL_FROM:gemis6292@gmail.com}
+    tracking-enabled: false
+    receiver:
+      enabled: false  # Disabled until IMAP credentials configured separately
+    imap:
+      host: ${IMAP_HOST:imap.gmail.com}
+      port: ${IMAP_PORT:993}
+      username: ${IMAP_USERNAME:gemis6292@gmail.com}
+      password: ${IMAP_PASSWORD:utqk kwym ikem ebbc}
+  ad:
+    enabled: false
+    domain: ${AD_DOMAIN:}
+    server: ${AD_SERVER:}
+  auto-refresh-interval: 30000
+
+# Actuator
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: when-authorized
+
+# Logging
+logging:
+  level:
+    root: INFO
+    com.alahlia: DEBUG
+    org.hibernate.SQL: WARN
+  file:
+    name: logs/action-sheet-system.log
+  pattern:
+    console: "%d{HH:mm:ss} %-5level %logger{20} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+
+# API Docs
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    tags-sorter: alpha
+    operations-sorter: alpha
+
+---
+# ============================
+# PRODUCTION PROFILE
+# ============================
+spring:
+  config:
+    activate:
+      on-profile: prod
+
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:actionsheet}
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:postgres}
+    driver-class-name: org.postgresql.Driver
+
+  h2:
+    console:
+      enabled: false
+
+  jpa:
+    properties:
+      hibernate:
+        jdbc:
+          batch_size: 25
+        order_inserts: true
+        order_updates: true
+
+app:
+  data-path: "\\\\actionsheet\\E\\Action Sheet System\\data"
+  files-path: "\\\\actionsheet\\E\\Action Sheet System\\data\\files"
+  email:
+    tracking-enabled: true
+    receiver:
+      enabled: true
+
+logging:
+  level:
+    com.alahlia: INFO
+    org.hibernate.SQL: WARN
