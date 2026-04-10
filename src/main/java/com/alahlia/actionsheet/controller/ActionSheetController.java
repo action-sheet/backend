@@ -9,10 +9,17 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.FileSystemResource;
+import org.springframework.core.io.Resource;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.io.File;
+import java.net.URLConnection;
 import java.util.List;
 import java.util.Map;
 
@@ -28,6 +35,9 @@ public class ActionSheetController {
 
     private final ActionSheetService actionSheetService;
     private final EmailService emailService;
+
+    @Value("${app.files-path:Z:/Action Sheet System/data/files}")
+    private String filesPath;
 
     @GetMapping
     @Operation(summary = "List all action sheets", description = "Returns non-deleted sheets, optionally filtered by search keyword")
@@ -140,5 +150,23 @@ public class ActionSheetController {
     @Operation(summary = "Resend emails for an existing action sheet")
     public ActionSheetDTO resendSheet(@PathVariable String id) {
         return actionSheetService.resendEmails(id);
+    }
+
+    @GetMapping("/files/{fileName:.+}")
+    @Operation(summary = "Serve an attached document file for preview/download")
+    public ResponseEntity<Resource> serveFile(@PathVariable String fileName) {
+        File file = new File(filesPath, fileName);
+        if (!file.exists() || !file.isFile()) {
+            return ResponseEntity.notFound().build();
+        }
+
+        String contentType = URLConnection.guessContentTypeFromName(file.getName());
+        if (contentType == null) contentType = "application/octet-stream";
+
+        FileSystemResource resource = new FileSystemResource(file);
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType(contentType))
+                .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + file.getName() + "\"")
+                .body(resource);
     }
 }
