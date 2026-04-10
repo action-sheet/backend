@@ -44,6 +44,7 @@ public class ActionSheetService {
     private final WebSocketEventPublisher wsPublisher;
     private final PdfService pdfService;
     private final EmailService emailService;
+    private final DraftRecoveryService draftRecoveryService;
 
     // Duplicate response prevention — tracks last response timestamp per (sheetId, email)
     private final Map<String, Long> lastResponseTimestamps = new ConcurrentHashMap<>();
@@ -108,6 +109,13 @@ public class ActionSheetService {
             saved = actionSheetRepository.save(saved); // save pdfPath
         }
 
+        // Auto-snapshot for draft recovery (ALL sheets, not just drafts)
+        try {
+            draftRecoveryService.saveSnapshot(saved);
+        } catch (Exception e) {
+            log.warn("Draft snapshot failed for {}: {}", saved.getId(), e.getMessage());
+        }
+
         wsPublisher.publishSheetCreated(saved);
         log.info("Created action sheet: {} — {}", saved.getId(), saved.getTitle());
         return DtoMapper.toDto(saved);
@@ -143,6 +151,14 @@ public class ActionSheetService {
         updateSheetStatus(existing);
 
         ActionSheet saved = actionSheetRepository.save(existing);
+
+        // Auto-snapshot for draft recovery
+        try {
+            draftRecoveryService.saveSnapshot(saved);
+        } catch (Exception e) {
+            log.warn("Draft snapshot failed for {}: {}", saved.getId(), e.getMessage());
+        }
+
         wsPublisher.publishSheetUpdated(saved);
         log.info("Updated action sheet: {}", id);
         return DtoMapper.toDto(saved);
