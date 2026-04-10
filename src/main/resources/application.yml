@@ -62,7 +62,7 @@ server:
 
 # Application config
 app:
-  base-url: ${APP_BASE_URL:http://localhost:8080}
+  base-url: ${APP_BASE_URL:https://simply-copy-circumstances-bush.trycloudflare.com}
   data-path: "Z:/Action Sheet System/data"
   files-path: "Z:/Action Sheet System/data/files"
   repository-path: "Z:/Action Sheet System/data/repository"
