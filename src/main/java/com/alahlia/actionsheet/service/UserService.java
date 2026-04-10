@@ -249,4 +249,23 @@ public class UserService {
         }
         return removed;
     }
+
+    /** Convenience: add user from plain parameters. */
+    public boolean addUser(String username, String email, String plainPassword, String role) {
+        User u = new User();
+        u.setUsername(username);
+        u.setEmail(email);
+        u.setPassword(plainPassword);
+        u.setRole(role);
+        return addUser(u);
+    }
+
+    /** Convenience: update user from plain parameters. */
+    public boolean updateUser(String email, String newUsername, String newRole, String newPassword) {
+        User updated = new User();
+        updated.setUsername(newUsername);
+        updated.setRole(newRole);
+        updated.setPassword(newPassword);
+        return updateUser(email, updated);
+    }
 }

@@ -187,6 +187,46 @@ public class ActionSheetService {
         return true;
     }
 
+    public ActionSheetDTO overrideStatus(String id, String status, String gmEmail, String note) {
+        ActionSheet sheet = actionSheetRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("ActionSheet", id));
+        
+        sheet.setStatus(status.toUpperCase());
+        if ("DRAFT".equalsIgnoreCase(status)) {
+            sheet.setWorkflowState(ActionSheet.WorkflowState.DRAFT);
+        } else if ("PENDING".equalsIgnoreCase(status) || "PENDING_REVIEW".equalsIgnoreCase(status)) {
+            sheet.setWorkflowState(ActionSheet.WorkflowState.PENDING_REVIEW);
+        } else if ("IN PROGRESS".equalsIgnoreCase(status)) {
+            sheet.setWorkflowState(ActionSheet.WorkflowState.IN_PROGRESS);
+        } else {
+            sheet.setWorkflowState(ActionSheet.WorkflowState.COMPLETED);
+        }
+        
+        sheet.setOverriddenBy(gmEmail);
+        sheet.setOverrideNote(note);
+        sheet.updateTimestamp();
+        
+        // Re-generate PDF to reflect the new status
+        try {
+            pdfService.generatePdf(sheet);
+        } catch (Exception e) {
+            log.warn("Failed to generate PDF during GM override for sheet {}", id, e);
+        }
+        
+        ActionSheet saved = actionSheetRepository.save(sheet);
+        
+        // Auto-snapshot for draft recovery
+        try {
+            draftRecoveryService.saveSnapshot(saved);
+        } catch (Exception e) {
+            log.warn("Draft snapshot failed for {}: {}", saved.getId(), e.getMessage());
+        }
+        
+        wsPublisher.publishSheetUpdated(saved);
+        log.info("GM {} overridden sheet {} status to {}", gmEmail, id, status);
+        return DtoMapper.toDto(saved);
+    }
+
     @Transactional(readOnly = true)
     public List<ActionSheetDTO> searchActionSheets(String keyword) {
         if (keyword == null || keyword.trim().isEmpty()) {
