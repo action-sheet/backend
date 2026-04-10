@@ -115,7 +115,7 @@ springdoc:
 
 ---
 # ============================
-# PRODUCTION PROFILE
+# PRODUCTION PROFILE (Render)
 # ============================
 spring:
   config:
@@ -123,7 +123,7 @@ spring:
       on-profile: prod
 
   datasource:
-    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:actionsheet}
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/actionsheet}
     username: ${DB_USERNAME:postgres}
     password: ${DB_PASSWORD:postgres}
     driver-class-name: org.postgresql.Driver
@@ -139,14 +139,19 @@ spring:
           batch_size: 25
         order_inserts: true
         order_updates: true
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+
+server:
+  port: ${PORT:8080}
 
 app:
-  data-path: "\\\\actionsheet\\E\\Action Sheet System\\data"
-  files-path: "\\\\actionsheet\\E\\Action Sheet System\\data\\files"
+  data-path: ${DATA_PATH:/data}
+  files-path: ${FILES_PATH:/data/files}
+  repository-path: ${REPOSITORY_PATH:/data/repository}
   email:
     tracking-enabled: true
     receiver:
-      enabled: true
+      enabled: false
 
 logging:
   level:
