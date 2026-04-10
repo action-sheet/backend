@@ -100,6 +100,15 @@ public class EmailReceiverService {
 
         log.info("Processing email from: {} | Subject: {}", from, subject);
 
+        // *** CRITICAL: Ignore emails from the SYSTEM'S OWN sender address ***
+        // The IMAP inbox picks up our own sent emails — those are NOT responses!
+        if (from != null && (from.equalsIgnoreCase(username) ||
+                from.toLowerCase().contains("gemis6292") ||
+                from.toLowerCase().contains("noreply"))) {
+            log.debug("Ignoring email from system sender: {}", from);
+            return;
+        }
+
         // Extract action sheet ID
         String actionSheetId = extractActionSheetId(subject, content);
         if (actionSheetId == null) {
@@ -117,8 +126,8 @@ public class EmailReceiverService {
         // Find matching email (case-insensitive)
         String matchedEmail = findMatchingEmail(sheet, from);
         if (matchedEmail == null) {
-            log.warn("Email not in recipients list: {}", from);
-            matchedEmail = from; // Use anyway
+            log.warn("Email not in recipients list — REJECTING response from: {}", from);
+            return;  // DO NOT process emails from unknown senders
         }
 
         // Check if INFO-only recipient
@@ -128,7 +137,7 @@ public class EmailReceiverService {
             return;
         }
 
-        // Extract response keyword
+        // Extract response keyword (strict: must be near the top of the email body)
         String response = extractResponse(content);
         if (response == null) {
             log.warn("No valid response keyword found from: {}", from);
@@ -195,23 +204,22 @@ public class EmailReceiverService {
     private String extractResponse(String content) {
         if (content == null) return null;
 
-        String upper = content.toUpperCase();
+        // Only look at the FIRST 500 characters of the email body
+        // This prevents matching keywords in quoted/forwarded content or HTML templates
+        String first500 = content.length() > 500 ? content.substring(0, 500) : content;
+        String upper = first500.toUpperCase();
 
-        // Priority order
+        // Priority order — strict keyword matching
         if (upper.contains("ACTION TAKEN")) return "ACTION TAKEN";
-        if (upper.contains("COMPLETED")) return "COMPLETED";
-        if (upper.contains("DONE")) return "DONE";
-        if (upper.contains("FINISHED")) return "FINISHED";
         if (upper.contains("APPROVED")) return "APPROVED";
-        if (upper.contains("ACCEPTED")) return "ACCEPTED";
         if (upper.contains("REJECTED")) return "REJECTED";
         if (upper.contains("DECLINED")) return "DECLINED";
         if (upper.contains("IN PROGRESS")) return "IN PROGRESS";
-        if (upper.contains("WORKING")) return "WORKING";
         if (upper.contains("NEEDS REVIEW")) return "NEEDS REVIEW";
-        if (upper.contains("REVIEW")) return "REVIEW";
         if (upper.contains("NOTED")) return "NOTED";
         if (upper.contains("ACKNOWLEDGED")) return "ACKNOWLEDGED";
+        // Removed overly broad keywords: COMPLETED, DONE, FINISHED, WORKING, REVIEW
+        // These appear too often in quoted email content and template HTML
 
         return null;
     }

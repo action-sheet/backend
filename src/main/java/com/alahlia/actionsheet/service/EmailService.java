@@ -115,10 +115,10 @@ public class EmailService {
         h.append("<table role=\"presentation\" width=\"620\" cellpadding=\"0\" cellspacing=\"0\" style=\"background:#ffffff; border-radius:4px; overflow:hidden; box-shadow:0 1px 4px rgba(0,0,0,0.08);\">");
 
         // ── HEADER ─────────────────────────────────────
-        h.append("<tr><td style=\"background:#800000; padding:28px 40px; text-align:center;\">");
+        h.append("<tr><td style=\"background:#f5f0e8; padding:28px 40px; text-align:center;\">");
         h.append("<img src=\"cid:acglogo\" alt=\"ACG\" width=\"80\" style=\"display:block; margin:0 auto 12px; border-radius:4px;\" />");
-        h.append("<div style=\"color:#ffffff; font-size:18px; font-weight:700; letter-spacing:1.5px;\">AL-AHLIA CONTRACTING GROUP</div>");
-        h.append("<div style=\"color:rgba(255,255,255,0.6); font-size:11px; letter-spacing:1px; margin-top:4px;\">ACTION SHEET NOTIFICATION</div>");
+        h.append("<div style=\"color:#800000; font-size:18px; font-weight:700; letter-spacing:1.5px;\">AL-AHLIA CONTRACTING GROUP</div>");
+        h.append("<div style=\"color:#999; font-size:11px; letter-spacing:1px; margin-top:4px;\">ACTION SHEET NOTIFICATION</div>");
         h.append("</td></tr>");
 
         // ── BODY ───────────────────────────────────────
