@@ -20,31 +20,37 @@ import java.util.Map;
 public class AuthController {
 
     private final EmployeeService employeeService;
+    private final com.alahlia.actionsheet.service.UserService userService;
 
     @PostMapping("/login")
     public ResponseEntity<Map<String, Object>> login(@RequestBody Map<String, String> request) {
         String email = request.get("email");
+        String password = request.get("password");
         
         if (email == null || email.isEmpty()) {
             return ResponseEntity.badRequest().body(Map.of("error", "Email is required"));
         }
 
-        Employee employee = employeeService.getEmployee(email);
-        
-        if (employee == null) {
-            return ResponseEntity.status(401).body(Map.of("error", "User not found"));
+        if (password == null || password.isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Password is required"));
         }
 
-        if (!employee.isActive()) {
-            return ResponseEntity.status(401).body(Map.of("error", "User is inactive"));
+        // Authenticate against users.json securely
+        com.alahlia.actionsheet.service.UserService.User authUser = userService.authenticate(email, password);
+        if (authUser == null) {
+            return ResponseEntity.status(401).body(Map.of("error", "Invalid email or password"));
         }
+
+        // Optional: Get department and hierarchy from employee records if available
+        Employee employee = employeeService.getEmployee(email);
 
         Map<String, Object> response = new HashMap<>();
-        response.put("email", employee.getEmail());
-        response.put("name", employee.getName());
-        response.put("role", employee.getRole());
-        response.put("department", employee.getDepartment());
-        response.put("hierarchyLevel", employee.getHierarchyLevel());
+        // Fallback to authUser's email and role since it's the primary authenticator 
+        response.put("email", authUser.getEmail() != null ? authUser.getEmail() : email);
+        response.put("name", employee != null ? employee.getName() : authUser.getUsername());
+        response.put("role", authUser.getRole()); // role comes from users.json securely
+        response.put("department", employee != null ? employee.getDepartment() : "General");
+        response.put("hierarchyLevel", employee != null ? employee.getHierarchyLevel() : 99);
 
         return ResponseEntity.ok(response);
     }
@@ -56,18 +62,20 @@ public class AuthController {
 
     @GetMapping("/me")
     public ResponseEntity<Map<String, Object>> getCurrentUser(@RequestParam String email) {
-        Employee employee = employeeService.getEmployee(email);
+        com.alahlia.actionsheet.service.UserService.User authUser = userService.getUserByEmail(email);
         
-        if (employee == null) {
+        if (authUser == null) {
             return ResponseEntity.status(401).build();
         }
 
+        Employee employee = employeeService.getEmployee(email);
+
         Map<String, Object> response = new HashMap<>();
-        response.put("email", employee.getEmail());
-        response.put("name", employee.getName());
-        response.put("role", employee.getRole());
-        response.put("department", employee.getDepartment());
-        response.put("hierarchyLevel", employee.getHierarchyLevel());
+        response.put("email", authUser.getEmail() != null ? authUser.getEmail() : email);
+        response.put("name", employee != null ? employee.getName() : authUser.getUsername());
+        response.put("role", authUser.getRole());
+        response.put("department", employee != null ? employee.getDepartment() : "General");
+        response.put("hierarchyLevel", employee != null ? employee.getHierarchyLevel() : 99);
 
         return ResponseEntity.ok(response);
     }
