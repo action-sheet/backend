@@ -2,9 +2,9 @@ spring:
   application:
     name: action-sheet-system
 
-  # Default profile: H2 file-based — data persists at Z:\Action Sheet System\data
+  # Default profile: H2 file-based — data persists locally on the server
   datasource:
-    url: jdbc:h2:file:Z:/Action Sheet System/data/actionsheet_db;DB_CLOSE_DELAY=-1;MODE=PostgreSQL;AUTO_SERVER=TRUE
+    url: jdbc:h2:file:E:/Action Sheet System/data/actionsheet_db;DB_CLOSE_DELAY=-1;MODE=PostgreSQL;AUTO_SERVER=TRUE
     username: sa
     password:
     driver-class-name: org.h2.Driver
@@ -63,9 +63,9 @@ server:
 # Application config
 app:
   base-url: ${APP_BASE_URL:https://childcare-scarce-cauterize.ngrok-free.dev}
-  data-path: "Z:/Action Sheet System/data"
-  files-path: "Z:/Action Sheet System/data/files"
-  repository-path: "Z:/Action Sheet System/data/repository"
+  data-path: ${DATA_PATH:E:/Action Sheet System/data}
+  files-path: ${FILES_PATH:E:/Action Sheet System/data/files}
+  repository-path: ${REPOSITORY_PATH:E:/Action Sheet System/data/repository}
   email:
     from: ${EMAIL_FROM:gemis6292@gmail.com}
     tracking-enabled: false
