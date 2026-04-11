@@ -45,6 +45,7 @@ public class ActionSheetService {
     private final PdfService pdfService;
     private final EmailService emailService;
     private final DraftRecoveryService draftRecoveryService;
+    private final AttachmentService attachmentService;
 
     // Duplicate response prevention — tracks last response timestamp per (sheetId, email)
     private final Map<String, Long> lastResponseTimestamps = new ConcurrentHashMap<>();
@@ -56,6 +57,12 @@ public class ActionSheetService {
 
     private static final Set<String> NEGATIVE_STATUSES = Set.of(
             "REJECTED", "DECLINED", "REFUSED", "REJECTED / RETURNED");
+
+    // Initialize attachments directory on startup
+    @jakarta.annotation.PostConstruct
+    public void init() {
+        attachmentService.ensureAttachmentsDirectory();
+    }
 
     // ======================= CRUD =======================
 

@@ -62,7 +62,7 @@ server:
 
 # Application config
 app:
-  base-url: ${APP_BASE_URL:https://entering-seen-average-barbie.trycloudflare.com}
+  base-url: ${APP_BASE_URL:https://childcare-scarce-cauterize.ngrok-free.dev}
   data-path: "Z:/Action Sheet System/data"
   files-path: "Z:/Action Sheet System/data/files"
   repository-path: "Z:/Action Sheet System/data/repository"

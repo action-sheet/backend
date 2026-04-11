@@ -145,14 +145,8 @@ public class ActionSheetController {
             return ResponseEntity.status(500).body(Map.of("error", e.getMessage()));
         }
     }
-    @PostMapping("/{id}/override")
-    @Operation(summary = "GM Override for sheet status")
-    public ActionSheetDTO overrideStatus(@PathVariable String id, @RequestBody Map<String, String> payload) {
-        String status = payload.get("status");
-        String gmEmail = payload.get("gmEmail");
-        String note = payload.get("note");
-        return actionSheetService.overrideStatus(id, status, gmEmail, note);
-    }
+
+
 
     @PostMapping("/{id}/resend")
     @Operation(summary = "Resend emails for an existing action sheet")

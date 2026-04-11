@@ -50,6 +50,9 @@ public class SecurityConfig {
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setAllowedOriginPatterns(Arrays.asList(
             "http://localhost:*",
+            "http://192.168.0.*:*",
+            "https://*.ngrok-free.dev",
+            "https://*.ngrok-free.app",
             "https://*.trycloudflare.com",
             "https://*.vercel.app",
             "https://*.onrender.com"
