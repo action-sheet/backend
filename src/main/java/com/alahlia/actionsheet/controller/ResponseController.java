@@ -33,6 +33,7 @@ public class ResponseController {
     /**
      * Handle one-click response from email button.
      * GET because email clients follow links with GET requests.
+     * Returns an HTML page that auto-submits via JavaScript to bypass ngrok warning.
      */
     @GetMapping(produces = MediaType.TEXT_HTML_VALUE)
     public ResponseEntity<String> handleEmailResponse(
@@ -42,6 +43,23 @@ public class ResponseController {
             @RequestParam("token") String token) {
 
         log.info("📩 Email response received — Sheet: {} | Email: {} | Response: {}", sheetId, email, response);
+
+        // Immediately process the response (no bypass page needed)
+        return processResponse(sheetId, email, response, token);
+    }
+
+    /**
+     * Process the response
+     */
+    @PostMapping(value = "/process", produces = MediaType.TEXT_HTML_VALUE)
+    @GetMapping(value = "/process", produces = MediaType.TEXT_HTML_VALUE)
+    public ResponseEntity<String> processResponse(
+            @RequestParam("sheet") String sheetId,
+            @RequestParam("email") String email,
+            @RequestParam("response") String response,
+            @RequestParam("token") String token) {
+
+        log.info("📩 Processing email response — Sheet: {} | Email: {} | Response: {}", sheetId, email, response);
 
         // Validate HMAC token
         String expectedToken = generateToken(sheetId, email, response);
@@ -63,14 +81,18 @@ public class ResponseController {
                         "#e65100", false));
             }
 
-            // Check if already responded
+            // Check if already responded with the SAME response
             if (sheet.getResponses() != null && sheet.getResponses().containsKey(email)) {
                 String existingResponse = sheet.getResponses().get(email);
-                return ResponseEntity.ok(buildResponsePage(
-                        "ℹ️ Already Responded",
-                        "You have already responded to this action sheet with: <strong>" +
-                                existingResponse + "</strong><br><br>Your original response has been recorded.",
-                        "#1976d2", true));
+                if (existingResponse.equals(response)) {
+                    // Same response - show already responded message
+                    return ResponseEntity.ok(buildResponsePage(
+                            "ℹ️ Already Responded",
+                            "You have already responded to this action sheet with: <strong>" +
+                                    existingResponse + "</strong><br><br>Your response has been recorded.",
+                            "#1976d2", true));
+                }
+                // Different response - allow update (will be handled by addResponse)
             }
 
             // Check if INFO-only recipient
@@ -90,10 +112,10 @@ public class ResponseController {
                     sheetId, email, response);
 
             return ResponseEntity.ok(buildResponsePage(
-                    "✅ Response Recorded",
+                    "✅ Response Updated",
                     "Your response <strong>\"" + response + "\"</strong> has been recorded successfully." +
                             "<br><br>Action Sheet: <code>" + sheetId + "</code>" +
-                            "<br>Thank you for your prompt response.",
+                            "<br>Thank you for your response.",
                     "#16a34a", true));
 
         } catch (Exception e) {
@@ -104,6 +126,90 @@ public class ResponseController {
                             "<br><br>Error: " + e.getMessage(),
                     "#dc2626", false));
         }
+    }
+
+    /**
+     * Build an HTML page that bypasses ngrok warning and submits the response
+     */
+    private String buildBypassPage(String sheetId, String email, String response, String token) {
+        return """
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>Processing Response - Al-Ahlia Action Sheet</title>
+                <style>
+                    * { margin: 0; padding: 0; box-sizing: border-box; }
+                    body {
+                        font-family: 'Segoe UI', -apple-system, Arial, sans-serif;
+                        background: linear-gradient(135deg, #f5f0ea 0%%, #e8e0d4 100%%);
+                        min-height: 100vh;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        padding: 20px;
+                    }
+                    .card {
+                        background: white;
+                        border-radius: 16px;
+                        box-shadow: 0 20px 60px rgba(0,0,0,0.08);
+                        max-width: 480px;
+                        width: 100%%;
+                        padding: 40px;
+                        text-align: center;
+                    }
+                    .spinner {
+                        width: 48px; height: 48px;
+                        border: 4px solid #f0ebe5;
+                        border-top-color: #800000;
+                        border-radius: 50%%;
+                        animation: spin 1s linear infinite;
+                        margin: 0 auto 20px;
+                    }
+                    @keyframes spin {
+                        to { transform: rotate(360deg); }
+                    }
+                    h2 { color: #800000; font-size: 20px; margin-bottom: 8px; }
+                    p { color: #666; font-size: 14px; }
+                </style>
+            </head>
+            <body>
+                <div class="card">
+                    <div class="spinner"></div>
+                    <h2>Processing Your Response</h2>
+                    <p>Please wait...</p>
+                </div>
+                <script>
+                    // Bypass ngrok warning and submit response
+                    (async function() {
+                        try {
+                            const params = new URLSearchParams({
+                                sheet: '%s',
+                                email: '%s',
+                                response: '%s',
+                                token: '%s'
+                            });
+                            
+                            const response = await fetch('/api/respond/process?' + params, {
+                                method: 'POST',
+                                headers: {
+                                    'ngrok-skip-browser-warning': 'true'
+                                }
+                            });
+                            
+                            const html = await response.text();
+                            document.open();
+                            document.write(html);
+                            document.close();
+                        } catch (error) {
+                            document.body.innerHTML = '<div class="card"><h2>Error</h2><p>Failed to process response: ' + error.message + '</p></div>';
+                        }
+                    })();
+                </script>
+            </body>
+            </html>
+            """.formatted(sheetId, email, response, token);
     }
 
     /**

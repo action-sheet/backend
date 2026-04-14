@@ -1,26 +1,57 @@
-# Build output
+# Maven
 target/
-!.mvn/wrapper/maven-wrapper.jar
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+release.properties
+dependency-reduced-pom.xml
+buildNumber.properties
+.mvn/timing.properties
+.mvn/wrapper/maven-wrapper.jar
 
 # IDE
 .idea/
 *.iml
+*.iws
+*.ipr
 .vscode/
 .settings/
 .classpath
 .project
-.factorypath
 
 # OS
 .DS_Store
-*.swp
-*.swo
 Thumbs.db
 
 # Logs
+logs/
 *.log
+*.log.*
+*.gz
 
-# Runtime
-*.pid
-*.seed
-*.pid.lock
+# Data (don't commit local data)
+data/
+*.dat
+
+# Executables
+ngrok.exe
+cloudflared.exe
+*.exe
+
+# Temporary files
+*.tmp
+*.bak
+*.swp
+*~
+
+# Environment
+.env
+.env.local
+
+# Test files
+test-cors-direct.html
+
+# Scripts (optional - keep deployment scripts)
+# *.bat
+# *.ps1

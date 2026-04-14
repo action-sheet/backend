@@ -7,6 +7,7 @@ import com.alahlia.actionsheet.repository.EmployeeRepository;
 import com.alahlia.actionsheet.repository.ProjectRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
@@ -36,14 +37,15 @@ public class LegacySyncService {
     private final EmployeeRepository employeeRepository;
     private final ProjectRepository projectRepository;
 
-    private static final String DATA_DIR = "Z:\\Action Sheet System\\data";
+    @Value("${app.data-path:E:/Action Sheet System/data}")
+    private String dataPath;
 
     @PostConstruct
     public void init() {
-        File dir = new File(DATA_DIR);
+        File dir = new File(dataPath);
         if (!dir.exists()) {
             dir.mkdirs();
-            log.warn("Created missing data directory: {}", DATA_DIR);
+            log.warn("Created missing data directory: {}", dataPath);
         }
     }
 
@@ -92,7 +94,7 @@ public class LegacySyncService {
                 legacyList.add(legacy);
             }
 
-            writeObject(new File(DATA_DIR, "employees.dat"), legacyList);
+            writeObject(new File(dataPath, "employees.dat"), legacyList);
             log.debug("Synced {} employees to legacy", legacyList.size());
         } catch (Exception e) {
             log.error("Failed to sync employees to legacy: {}", e.getMessage());
@@ -165,7 +167,7 @@ public class LegacySyncService {
                 legacyMap.put(legacy.id, legacy);
             }
 
-            writeObject(new File(DATA_DIR, "actionSheets.dat"), legacyMap);
+            writeObject(new File(dataPath, "actionSheets.dat"), legacyMap);
             log.debug("Synced {} action sheets to legacy", legacyMap.size());
         } catch (Exception e) {
             log.error("Failed to sync action sheets to legacy: {}", e.getMessage());
@@ -188,7 +190,7 @@ public class LegacySyncService {
                 legacyMap.put(legacy.id, legacy);
             }
 
-            writeObject(new File(DATA_DIR, "projects.dat"), legacyMap);
+            writeObject(new File(dataPath, "projects.dat"), legacyMap);
             log.debug("Synced {} projects to legacy", legacyMap.size());
         } catch (Exception e) {
             log.error("Failed to sync projects to legacy: {}", e.getMessage());

@@ -35,7 +35,7 @@ public class DataMigrationTool implements CommandLineRunner {
     private final ProjectRepository projectRepository;
 
     private static final String[] DATA_PATHS = {
-            "Z:\\Action Sheet System\\data",
+            "E:\\Action Sheet System\\data",
             System.getenv("APPDATA") != null ? System.getenv("APPDATA") + "\\ActionSheetApp\\data" : null,
             "E:\\action-sheet-app\\data",
             "./data",

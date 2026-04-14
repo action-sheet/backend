@@ -9,6 +9,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
@@ -30,13 +31,14 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/sheets")
 @RequiredArgsConstructor
+@Slf4j
 @Tag(name = "Action Sheets", description = "CRUD and workflow operations for action sheets")
 public class ActionSheetController {
 
     private final ActionSheetService actionSheetService;
     private final EmailService emailService;
 
-    @Value("${app.files-path:Z:/Action Sheet System/data/files}")
+    @Value("${app.files-path:E:/Action Sheet System/data/files}")
     private String filesPath;
 
     @GetMapping
@@ -154,21 +156,70 @@ public class ActionSheetController {
         return actionSheetService.resendEmails(id);
     }
 
+    @GetMapping("/{id}/pdf")
+    @Operation(summary = "Serve the PDF for a specific action sheet")
+    public ResponseEntity<Resource> servePdf(@PathVariable String id) {
+        ActionSheetDTO sheet = actionSheetService.getActionSheetDto(id);
+        if (sheet.getPdfPath() == null || sheet.getPdfPath().isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+
+        File file = new File(sheet.getPdfPath());
+        if (!file.exists() || !file.isFile()) {
+            // Try looking in the files directory with just the filename
+            String fileName = file.getName();
+            file = new File(filesPath, fileName);
+            if (!file.exists() || !file.isFile()) {
+                return ResponseEntity.notFound().build();
+            }
+        }
+
+        FileSystemResource resource = new FileSystemResource(file);
+        return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_PDF)
+                .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"ActionSheet_" + id + ".pdf\"")
+                .body(resource);
+    }
+
     @GetMapping("/files/{fileName:.+}")
     @Operation(summary = "Serve an attached document file for preview/download")
     public ResponseEntity<Resource> serveFile(@PathVariable String fileName) {
+        // Try the files directory first
         File file = new File(filesPath, fileName);
+        
+        // If not found, try looking in project-specific ActionSheets folders
         if (!file.exists() || !file.isFile()) {
+            // Extract sheet ID from filename if it follows the pattern ActionSheet_XXX.pdf
+            if (fileName.startsWith("ActionSheet_") && fileName.endsWith(".pdf")) {
+                String sheetId = fileName.substring(12, fileName.length() - 4);
+                try {
+                    ActionSheetDTO sheet = actionSheetService.getActionSheetDto(sheetId);
+                    if (sheet.getPdfPath() != null) {
+                        file = new File(sheet.getPdfPath());
+                    }
+                } catch (Exception e) {
+                    log.debug("Could not find sheet for PDF: {}", fileName);
+                }
+            }
+        }
+        
+        if (!file.exists() || !file.isFile()) {
+            log.warn("File not found: {} (looked in: {})", fileName, filesPath);
             return ResponseEntity.notFound().build();
         }
 
         String contentType = URLConnection.guessContentTypeFromName(file.getName());
         if (contentType == null) contentType = "application/octet-stream";
+        
+        // Use inline for PDFs to enable preview
+        String disposition = contentType.equals("application/pdf") 
+            ? "inline; filename=\"" + file.getName() + "\""
+            : "attachment; filename=\"" + file.getName() + "\"";
 
         FileSystemResource resource = new FileSystemResource(file);
         return ResponseEntity.ok()
                 .contentType(MediaType.parseMediaType(contentType))
-                .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + file.getName() + "\"")
+                .header(HttpHeaders.CONTENT_DISPOSITION, disposition)
                 .body(resource);
     }
 }

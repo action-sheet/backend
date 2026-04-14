@@ -86,6 +86,24 @@ public class ActionSheetService {
         return actionSheetRepository.findById(id).orElse(null);
     }
 
+    /**
+     * Save action sheet entity directly (for internal use).
+     */
+    public ActionSheet saveEntity(ActionSheet sheet) {
+        return actionSheetRepository.save(sheet);
+    }
+
+    /**
+     * Send emails for a sheet (called after attachments are uploaded).
+     */
+    public void sendSheetEmails(String sheetId) {
+        ActionSheet sheet = actionSheetRepository.findById(sheetId).orElse(null);
+        if (sheet != null) {
+            generateAndSendEmails(sheet);
+            actionSheetRepository.save(sheet); // Save pdfPath
+        }
+    }
+
     public ActionSheetDTO createActionSheet(CreateSheetRequest request) {
         ActionSheet sheet = new ActionSheet();
         sheet.setId(generateId(request.getProjectId()));
@@ -97,11 +115,17 @@ public class ActionSheetService {
         sheet.setFormData(request.getFormData() != null ? request.getFormData() : new HashMap<>());
         sheet.setCreatedDate(LocalDateTime.now());
 
-        // If status is PENDING, transition directly to IN_PROGRESS (skip DRAFT)
+        // If status is PENDING, mark as ready to send but DON'T send yet
+        // Email will be sent after attachments are uploaded
         if ("PENDING".equalsIgnoreCase(request.getStatus())) {
             sheet.setWorkflowState(ActionSheet.WorkflowState.IN_PROGRESS);
             sheet.setStatus("PENDING");
-            log.info("Sheet {} created and sent directly (PENDING)", sheet.getId());
+            // Store a flag to indicate email should be sent after attachments
+            if (sheet.getFormData() == null) {
+                sheet.setFormData(new HashMap<>());
+            }
+            sheet.getFormData().put("_pendingEmailSend", "true");
+            log.info("Sheet {} created with PENDING status - email will be sent after attachments", sheet.getId());
         } else {
             sheet.setWorkflowState(ActionSheet.WorkflowState.DRAFT);
             sheet.setStatus(request.getStatus() != null ? request.getStatus() : "DRAFT");
@@ -109,12 +133,6 @@ public class ActionSheetService {
         sheet.updateTimestamp();
 
         ActionSheet saved = actionSheetRepository.save(sheet);
-
-        // If sent directly (PENDING), generate PDF and send emails
-        if ("PENDING".equalsIgnoreCase(request.getStatus())) {
-            generateAndSendEmails(saved);
-            saved = actionSheetRepository.save(saved); // save pdfPath
-        }
 
         // Auto-snapshot for draft recovery (ALL sheets, not just drafts)
         try {
@@ -287,15 +305,19 @@ public class ActionSheetService {
      */
     private void generateAndSendEmails(ActionSheet sheet) {
         try {
-            // 1. Generate PDF
-            String pdfPath = pdfService.generatePdf(sheet);
-            sheet.setPdfPath(pdfPath);
-            log.info("PDF generated for sheet {}: {}", sheet.getId(), pdfPath);
+            // Reload sheet from database to get latest attachments
+            ActionSheet freshSheet = actionSheetRepository.findById(sheet.getId()).orElse(sheet);
+            
+            // 1. Generate PDF (with merged attachments if any)
+            String pdfPath = pdfService.generatePdf(freshSheet);
+            freshSheet.setPdfPath(pdfPath);
+            freshSheet = actionSheetRepository.save(freshSheet);
+            log.info("PDF generated for sheet {}: {}", freshSheet.getId(), pdfPath);
 
             // 2. Build recipient lists
-            Map<String, String> assignedTo = sheet.getAssignedTo();
+            Map<String, String> assignedTo = freshSheet.getAssignedTo();
             if (assignedTo == null || assignedTo.isEmpty()) {
-                log.warn("No recipients assigned to sheet {}, skipping email", sheet.getId());
+                log.warn("No recipients assigned to sheet {}, skipping email", freshSheet.getId());
                 return;
             }
 
@@ -310,7 +332,7 @@ public class ActionSheetService {
             }
 
             // 4. Send emails asynchronously (don't block the response)
-            emailService.sendActionSheetEmail(sheet, recipientEmails, recipientNames, attachments);
+            emailService.sendActionSheetEmail(freshSheet, recipientEmails, recipientNames, attachments);
 
         } catch (Exception e) {
             log.error("Failed to generate/send emails for sheet {}: {}", sheet.getId(), e.getMessage(), e);
@@ -359,6 +381,32 @@ public class ActionSheetService {
         }
 
         String oldStatus = sheet.getStatus();
+        
+        // Save to response history BEFORE updating current response
+        com.alahlia.actionsheet.entity.ResponseEntry historyEntry = new com.alahlia.actionsheet.entity.ResponseEntry();
+        historyEntry.setActionSheet(sheet);
+        historyEntry.setEmail(email);
+        historyEntry.setResponse(normalizedResponse);
+        historyEntry.setTimestamp(LocalDateTime.now());
+        historyEntry.setOverwritten(false);
+        historyEntry.setSenderUserId(senderUserId);
+        historyEntry.setSenderRole(senderRole);
+        historyEntry.setSenderHierarchyLevel(hierarchyLevel != null ? hierarchyLevel : 5);
+        
+        // Mark previous response as overwritten if exists
+        if (sheet.getResponses().containsKey(email)) {
+            String previousResponse = sheet.getResponses().get(email);
+            // Find and mark the previous entry as overwritten
+            for (com.alahlia.actionsheet.entity.ResponseEntry entry : sheet.getResponseHistory()) {
+                if (email.equals(entry.getEmail()) && !entry.isOverwritten() && 
+                    previousResponse.equals(entry.getResponse())) {
+                    entry.setOverwritten(true);
+                    break;
+                }
+            }
+        }
+        
+        sheet.getResponseHistory().add(historyEntry);
         sheet.getResponses().put(email, normalizedResponse);
         updateSheetStatus(sheet);
         sheet.updateTimestamp();

@@ -34,7 +34,7 @@ public class DraftRecoveryService {
 
     private final ActionSheetRepository actionSheetRepository;
 
-    @Value("${files.path:Z:/Action Sheet System/data}")
+    @Value("${app.data-path:E:/Action Sheet System/data}")
     private String dataPath;
 
     private File recoveryDir;

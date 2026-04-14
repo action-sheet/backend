@@ -20,6 +20,8 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -53,19 +55,21 @@ public class PdfService {
     /**
      * Generate PDF for action sheet using the legacy ActionSheetRenderer layout.
      * Renders to a BufferedImage at 2x scale (144 DPI) then embeds as JPEG in PDF.
+     * If attachments exist, merges them as additional pages.
      */
     public String generatePdf(ActionSheet sheet) {
         try (PDDocument document = new PDDocument()) {
+            // Page 1: Generated action sheet
             PDPage page = new PDPage(PDRectangle.A4);
             document.addPage(page);
 
             // Extract form data
             Map<String, Object> formData = sheet.getFormData() != null ? sheet.getFormData() : Map.of();
 
-            // Render to BufferedImage at 2x scale (144 DPI for quality)
-            int scale = 2;
-            int width = PAGE_WIDTH * scale;
-            int height = PAGE_HEIGHT * scale;
+            // Render to BufferedImage at 1.25x scale (90 DPI - good quality, smaller file)
+            double scale = 1.25;
+            int width = (int)(PAGE_WIDTH * scale);
+            int height = (int)(PAGE_HEIGHT * scale);
             BufferedImage image = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
             Graphics2D g2 = image.createGraphics();
 
@@ -82,17 +86,58 @@ public class PdfService {
             drawDocument(g2, formData, sheet);
             g2.dispose();
 
-            // Embed in PDF with JPEG compression
-            PDImageXObject pdImage = JPEGFactory.createFromImage(document, image, 0.85f);
+            // Embed in PDF with optimized JPEG compression (0.65 = smaller file, still readable)
+            PDImageXObject pdImage = JPEGFactory.createFromImage(document, image, 0.65f);
             try (PDPageContentStream contentStream = new PDPageContentStream(document, page)) {
                 contentStream.drawImage(pdImage, 0, 0,
                         page.getMediaBox().getWidth(), page.getMediaBox().getHeight());
             }
 
-            // Save PDF
-            String pdfPath = saveDocument(document, sheet);
-            log.info("✅ PDF generated: {}", pdfPath);
-            return pdfPath;
+            // Pages 2+: Merge attached documents
+            List<PDDocument> attachedDocs = new ArrayList<>();
+            try {
+                if (sheet.getAttachments() != null && !sheet.getAttachments().isEmpty()) {
+                    for (String fileName : sheet.getAttachments()) {
+                        File attachedDoc = new File("data/attachments/" + sheet.getId() + "/" + fileName);
+                        if (attachedDoc.exists() && fileName.toLowerCase().endsWith(".pdf")) {
+                            try {
+                                // Load the attached PDF and keep it open until we're done
+                                PDDocument attachedPdf = PDDocument.load(attachedDoc);
+                                attachedDocs.add(attachedPdf); // Keep reference to close later
+                                
+                                // Import pages (limit to first 20 pages to control file size)
+                                int pageCount = 0;
+                                for (PDPage attachedPage : attachedPdf.getPages()) {
+                                    if (pageCount >= 20) {
+                                        log.warn("Attachment {} exceeds 20 pages, truncating", fileName);
+                                        break;
+                                    }
+                                    document.importPage(attachedPage);
+                                    pageCount++;
+                                }
+                                log.debug("Merged PDF attachment: {} ({} pages)", fileName, pageCount);
+                            } catch (Exception e) {
+                                log.warn("Failed to merge PDF attachment {}: {}", fileName, e.getMessage());
+                            }
+                        }
+                    }
+                }
+
+                // Save PDF with compression (while attached docs are still open)
+                String pdfPath = saveDocument(document, sheet);
+                log.info("✅ PDF generated: {} (size: {} KB)", pdfPath, new File(pdfPath).length() / 1024);
+                return pdfPath;
+                
+            } finally {
+                // Close all attached documents after saving
+                for (PDDocument attachedDoc : attachedDocs) {
+                    try {
+                        attachedDoc.close();
+                    } catch (Exception e) {
+                        log.debug("Error closing attached PDF: {}", e.getMessage());
+                    }
+                }
+            }
 
         } catch (Exception e) {
             log.error("❌ PDF generation failed for sheet {}: {}", sheet.getId(), e.getMessage(), e);

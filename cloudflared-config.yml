@@ -1,0 +1,23 @@
+# Cloudflare Tunnel Configuration
+# This fixes CORS issues by properly configuring the tunnel
+
+tunnel: quick-tunnel
+credentials-file: /path/to/credentials.json
+
+ingress:
+  - hostname: "*.trycloudflare.com"
+    service: http://localhost:8080
+    originRequest:
+      # Enable HTTP/2
+      http2Origin: true
+      # Disable TLS verification for local development
+      noTLSVerify: true
+      # Add CORS headers at tunnel level
+      httpHostHeader: localhost:8080
+      # Connection settings
+      connectTimeout: 30s
+      tlsTimeout: 10s
+      tcpKeepAlive: 30s
+      keepAliveConnections: 100
+      keepAliveTimeout: 90s
+  - service: http_status:404

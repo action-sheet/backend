@@ -28,7 +28,20 @@ public class SecurityConfig {
         http
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .csrf(csrf -> csrf.disable())
-            .headers(headers -> headers.frameOptions(fo -> fo.sameOrigin())) // H2 console
+            .headers(headers -> headers
+                .frameOptions(fo -> fo.sameOrigin()) // H2 console
+                .addHeaderWriter((request, response) -> {
+                    // Add CORS headers to all responses
+                    String origin = request.getHeader("Origin");
+                    if (origin != null) {
+                        response.setHeader("Access-Control-Allow-Origin", origin);
+                        response.setHeader("Access-Control-Allow-Credentials", "true");
+                        response.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, PATCH, OPTIONS");
+                        response.setHeader("Access-Control-Allow-Headers", "*");
+                        response.setHeader("Access-Control-Max-Age", "3600");
+                    }
+                })
+            )
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(
                     "/api/**",
@@ -58,7 +71,29 @@ public class SecurityConfig {
             "https://*.onrender.com"
         ));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
-        configuration.setAllowedHeaders(List.of("*"));
+        configuration.setAllowedHeaders(Arrays.asList(
+            "*",
+            "Origin",
+            "X-Requested-With",
+            "Content-Type",
+            "Accept",
+            "Authorization",
+            "ngrok-skip-browser-warning",
+            "x-user-email",
+            "x-user-id",
+            "x-user-role",
+            "x-user-name"
+        ));
+        configuration.setExposedHeaders(Arrays.asList(
+            "Access-Control-Allow-Origin",
+            "Access-Control-Allow-Credentials",
+            "Access-Control-Allow-Methods",
+            "Access-Control-Allow-Headers",
+            "Content-Disposition",
+            "Content-Type",
+            "Content-Length",
+            "ngrok-skip-browser-warning"
+        ));
         configuration.setAllowCredentials(true);
         configuration.setMaxAge(3600L);
 

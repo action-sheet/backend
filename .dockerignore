@@ -1,0 +1,12 @@
+target/
+.git/
+.gitignore
+*.md
+*.bat
+*.ps1
+node_modules/
+.env
+logs/
+data/
+ngrok.exe
+cloudflared.exe

@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: actionsheet-backend
+    env: java
+    buildCommand: mvn clean package -DskipTests
+    startCommand: java -jar target/action-sheet-system-3.0.0.jar
+    envVars:
+      - key: JAVA_OPTS
+        value: -Xmx512m -Xms256m
+      - key: SERVER_PORT
+        value: 8080
+      - key: SPRING_PROFILES_ACTIVE
+        value: prod
+      - key: DATA_PATH
+        value: /data
+      - key: FILES_PATH
+        value: /data/files
+      - key: REPOSITORY_PATH
+        value: /data/repository
+    disk:
+      name: actionsheet-data
+      mountPath: /data
+      sizeGB: 1

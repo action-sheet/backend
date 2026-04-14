@@ -24,9 +24,15 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
-        // Register STOMP endpoint for WebSocket connections
+        // Primary endpoint: native WebSocket (fastest, no SockJS overhead, ngrok compatible)
+        registry.addEndpoint("/ws-direct")
+                .setAllowedOriginPatterns("*");
+
+        // Legacy SockJS fallback endpoint (kept for backward compatibility)
         registry.addEndpoint("/ws")
                 .setAllowedOriginPatterns("*")
-                .withSockJS();
+                .withSockJS()
+                .setSuppressCors(false)
+                .setClientLibraryUrl("https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js");
     }
 }

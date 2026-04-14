@@ -36,11 +36,21 @@ spring:
           starttls:
             enable: true
             required: true
-          connectiontimeout: 15000
-          timeout: 15000
-          writetimeout: 15000
+          # Aggressive timeouts — fail fast, don't hang
+          connectiontimeout: 5000
+          timeout: 5000
+          writetimeout: 5000
+          # Skip waiting for QUIT response — saves ~1s per batch
+          quitwait: false
+          # Send partial deliveries (don't fail entire batch for one bad address)
+          sendpartial: true
+          # Reuse EHLO response across the session
+          ehlo: true
+          # DNS / hostname
+          localhost: localhost
           ssl:
             trust: smtp.gmail.com
+            protocols: TLSv1.3 TLSv1.2
 
   servlet:
     multipart:
@@ -58,11 +68,13 @@ server:
     context-path: /
   compression:
     enabled: true
-    mime-types: application/json,text/html,text/css,application/javascript
+    mime-types: application/json,application/pdf,text/html,text/css,application/javascript
 
 # Application config
 app:
-  base-url: ${APP_BASE_URL:https://childcare-scarce-cauterize.ngrok-free.dev}
+  base-url: ${APP_BASE_URL:http://localhost:8080}
+  # Frontend URL for email response links — set to Vercel URL to bypass ngrok warning
+  frontend-url: ${APP_FRONTEND_URL:https://frontend-rho-peach-62.vercel.app}
   data-path: ${DATA_PATH:E:/Action Sheet System/data}
   files-path: ${FILES_PATH:E:/Action Sheet System/data/files}
   repository-path: ${REPOSITORY_PATH:E:/Action Sheet System/data/repository}

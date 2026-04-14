@@ -18,7 +18,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 @Slf4j
 public class UserService {
 
-    @Value("${files.path:Z:/Action Sheet System/data}")
+    @Value("${app.data-path:E:/Action Sheet System/data}")
     private String dataPath;
 
     private final ObjectMapper mapper = new ObjectMapper();

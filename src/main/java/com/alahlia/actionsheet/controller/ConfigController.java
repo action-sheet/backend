@@ -61,7 +61,7 @@ public class ConfigController {
     @Value("${app.base-url:http://localhost:8080}")
     private String baseUrl;
 
-    @Value("${files.path:Z:/Action Sheet System/data}")
+    @Value("${app.data-path:E:/Action Sheet System/data}")
     private String dataPath;
 
     // ── Email Config ──

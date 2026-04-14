@@ -106,6 +106,11 @@ public class ActionSheet {
     @Column(columnDefinition = "text")
     private Map<String, String> userStatuses = new HashMap<>();
 
+    // Attachments - list of uploaded document filenames
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(columnDefinition = "text")
+    private List<String> attachments = new ArrayList<>();
+
     // Relationships — @JsonIgnore prevents infinite recursion during serialization.
     // These are exposed through DTOs via DtoMapper instead.
     @JsonIgnore
